@@ -12,7 +12,7 @@ SIDEBAR_BG = "#202020"
 EXPLORER_BG = "#2a2a2a"
 FILES_BG = "#303030"
 
-SAVE_PATH = r"B:\python\ReNote\save"
+SAVE_PATH = r"renote\save"
 
 if not os.path.exists(SAVE_PATH):
     os.makedirs(SAVE_PATH)
@@ -28,6 +28,7 @@ file_explorer.pack(side='left', fill='y')
 main = ctk.CTkFrame(root, fg_color=BG, corner_radius=0)
 main.pack(side='right', fill='both', expand=True)
 
+newfiles_amount = 1
 
 #showing main paig content
 
@@ -48,13 +49,15 @@ def show_page(page_name):
         lbl.pack(expand=True)
 
 def execute_command(command):
+    global newfiles_amount
     if command == 'New note':
-        new_name = "newfile.txt"
+        new_name = f"newfile{newfiles_amount}.txt"
         file_path = os.path.join(SAVE_PATH, new_name)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write("")
         refresh_files()
-        open_file(new_name)   
+        open_file(new_name)
+        newfiles_amount += 1   
 
 
 
@@ -95,6 +98,12 @@ def open_file(name):
     
     root.after(5000, save_file, file_path, text_area)
 
+# delete files
+    
+def delete_file(name):
+    os.remove(SAVE_PATH + '/' + name)
+    refresh_files()
+
 
 # explorer container inside 
 
@@ -116,9 +125,6 @@ explorer_icons = [("📄+", "New note"),
 
 #importing files from folder
 
-path = "B:\python\ReNote\save"
-filter = ".txt"
-
 files = []
 def refresh_files():
     files.clear()
@@ -132,8 +138,23 @@ def refresh_files():
 
     for name in files:
 
-        file_line = ctk.CTkButton(exporer_file_list, text = f"{ name }",anchor= 'w',hover_color="#333333", height=30 , fg_color = FILES_BG, cursor = 'hand2', command = lambda n=name:open_file(n))
-        file_line.pack(side = 'top', pady = 5, padx = (10,70))
+        file_placer = ctk.CTkFrame(exporer_file_list, fg_color=FILES_BG)
+        file_placer.pack(fill = 'y')
+        file_line = ctk.CTkButton(file_placer, text = f"{ name }",
+                                anchor= 'w',hover_color="#333333",
+                                height=30 ,
+                                fg_color = FILES_BG,
+                                cursor = 'hand2',
+                                command = lambda n=name:open_file(n))
+        file_line.pack(side = 'left', pady = 5, padx = 10)
+
+        delete_button = ctk.CTkButton(file_placer, text = "🗑️",
+                                     hover_color = "#333333",
+                                      fg_color = 'gray',
+                                      width = 0,
+                                      cursor = 'hand2',
+                                      command = lambda n = name: delete_file(n))
+        delete_button.pack(side=  'left', padx = (0, 30))
 refresh_files()
 
 
