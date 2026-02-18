@@ -12,7 +12,7 @@ SIDEBAR_BG = "#202020"
 EXPLORER_BG = "#2a2a2a"
 FILES_BG = "#303030"
 
-SAVE_PATH = r"renote\save"
+SAVE_PATH = r"save"
 
 if not os.path.exists(SAVE_PATH):
     os.makedirs(SAVE_PATH)
@@ -28,30 +28,52 @@ file_explorer.pack(side='left', fill='y')
 main = ctk.CTkFrame(root, fg_color=BG, corner_radius=0)
 main.pack(side='right', fill='both', expand=True)
 
+address_bar = ctk.CTkFrame(main, fg_color='#232323', height=40, corner_radius=0)
+address_bar.pack(fill="x", side="top")
+
+footer_bar = ctk.CTkFrame(main, fg_color='#232323', height=20, corner_radius=0)
+footer_bar.pack(fill="x", side="bottom")
+
+main_content = ctk.CTkFrame(main, fg_color=BG)
+main_content.pack(fill="both", expand=True)
+
 newfiles_amount = 1
+current_page = 0
+
 
 #showing main paig content
 
 def show_page(page_name):
-    for child in main.winfo_children():
+    global current_page
+    current_page = page_name
+
+    for child in main_content.winfo_children():
         child.destroy()
 
     if page_name == 'Home':
-        title = ctk.CTkEntry(main, font=("Segoe UI", 28, "bold"), width = 600, fg_color='transparent', border_width=0)
+        title = ctk.CTkEntry(main_content, font=("Segoe UI", 28, "bold"), width = 600, fg_color='transparent', border_width=0)
         title.insert("0", "Untitled")
         title.pack(pady=(50, 0), padx=(100,0), anchor="w")
 
-        text_area = ctk.CTkTextbox(main, font=("Segoe UI", 16))
+        text_area = ctk.CTkTextbox(main_content, font=("Segoe UI", 16))
         text_area.insert("0.0", "New text...")
         text_area.pack(fill='both', expand=True, padx=100, side = 'top')
+    elif page_name == 'Tags':
+        tags_title = ctk.CTkTextbox(main_content, font=("Segoe UI", 28, "bold"), width = 600, fg_color='transparent', border_width=0)
+        tags_title.insert("0", "Tags")
+        tags_title.pack(pady=(50, 0), padx=(100,0), anchor="w")
+
+        text_area = ctk.CTkTextbox(main_content, font=("Segoe UI", 16))
+        text_area.insert("0.0", "There will be tags")
+        text_area.pack(fill='both', expand=True, padx=100, side = 'top')
     else:
-        lbl = ctk.CTkLabel(main, text=page_name, font=("Segoe UI", 32))
+        lbl = ctk.CTkLabel(main_content, text=page_name, font=("Segoe UI", 32))
         lbl.pack(expand=True)
 
 def execute_command(command):
     global newfiles_amount
     if command == 'New note':
-        new_name = f"newfile{newfiles_amount}.txt"
+        new_name = f"newfile{newfiles_amount}.md"
         file_path = os.path.join(SAVE_PATH, new_name)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write("")
@@ -59,30 +81,47 @@ def execute_command(command):
         open_file(new_name)
         newfiles_amount += 1   
 
+    if command == 'New todo list' and current_page == 1:
+        create_todolist()
+
+    if command == 'Save file' and current_file_path:
+        save_file(current_file_path, current_text_area, current_title)
 
 
-def save_file(file_path, text_area):
+
+def save_file(file_path, text_area, title):
     with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
-
+    
+    filename = os.path.basename(file_path)
+    
+    current_filename = title.get()
     current_content = text_area.get("1.0", 'end-1c') 
 
-    if current_content == content:
+
+    if current_content == content and current_filename == filename:
         print("No changes detected...")
+    elif current_filename != filename:
+        new_path = os.path.join(SAVE_PATH, current_filename + ".md")
+        os.rename(file_path, new_path)
+        file_path = new_path
+
     else:
         with open(file_path, 'w', encoding="utf-8") as file:
             file.write(current_content)
         print(f"Auto-saved: {file_path}")
-    root.after(5000, save_file, file_path, text_area)
+    root.after(5000, save_file, file_path, text_area, title)
 
 # opening file and showin gin main
 
 def open_file(name):
-    for child in main.winfo_children():
+    global current_file_path, current_text_area, current_title
+    for child in main_content.winfo_children():
         child.destroy()
 
-    title = ctk.CTkEntry(main, font=("Segoe UI", 28, "bold"), width = 600, fg_color='transparent', border_width=0)
+    title = ctk.CTkEntry(main_content, font=("Segoe UI", 28, "bold"), width = 600, fg_color='transparent', border_width=0)
     title.insert("0", name)
+
     title.pack(pady=(50, 0), padx=(100,0), anchor="w")
 
 
@@ -91,12 +130,16 @@ def open_file(name):
     with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-    text_area = ctk.CTkTextbox(main, font=("Segoe UI", 16))
+    text_area = ctk.CTkTextbox(main_content, font=("Segoe UI", 16))
     text_area.insert("0.0", content)
     text_area.pack(fill='both', expand=True, padx=100, side = 'top')
 
-    
-    root.after(5000, save_file, file_path, text_area)
+
+    current_file_path = file_path
+    current_text_area = text_area
+    current_title = title
+
+    root.after(5000, save_file, file_path, text_area, title)
 
 # delete files
     
@@ -104,6 +147,9 @@ def delete_file(name):
     os.remove(SAVE_PATH + '/' + name)
     refresh_files()
 
+def create_todolist():
+    if current_text_area:
+        current_text_area.insert("insert", "- [ ] New Task\n")
 
 # explorer container inside 
 
@@ -116,12 +162,14 @@ exporer_file_list.pack(fill = 'both', expand = True)
 #lists of buttons(icons)
 
 buttons = [
-    ("⌂", "Home"), ("📄", "Notes"), ("⛓", "Links"),
-    ("▦", "Grid"), ("📅", "Calendar"), ("📁", "Files"), (">", "Terminal"),
+    ("⌂", "Home"), ("📄", "Notes"), ("⛓", "Tags"),
 ]
 
 explorer_icons = [("📄+", "New note"),
                    ("📁+", "New folder")]
+
+address_bar_btns = [('💾', "Save file"),
+                    ("☑", 'New todo list')]
 
 #importing files from folder
 
@@ -130,7 +178,7 @@ def refresh_files():
     files.clear()
     
     for filename in os.listdir(SAVE_PATH):
-        if filename.endswith(".txt"):
+        if filename.endswith(".md"):
             files.append(filename)
 
     for child in exporer_file_list.winfo_children():
@@ -185,9 +233,19 @@ for icon, name in explorer_icons:
     )
     small_btn.pack(side="left", padx=5, pady=10)
 
+# address bar icon
 
-
-
+for icon, name in address_bar_btns:
+    btn = ctk.CTkButton(
+        address_bar, 
+        text=icon, 
+        width=30, 
+        fg_color="transparent", 
+        hover_color="#333333",
+        font=("Segoe UI Symbol", 18),
+        command=lambda n=name: execute_command(n) 
+    )
+    btn.pack(side = 'right', pady=5, padx=5)
 
 
 show_page("Home")
