@@ -38,6 +38,9 @@ main_content = ctk.CTkFrame(main, fg_color=BG)
 main_content.pack(fill="both", expand=True)
 
 newfiles_amount = 1
+current_file_path = None
+current_text_area = None
+current_title = None
 current_page = 0
 
 
@@ -81,36 +84,37 @@ def execute_command(command):
         open_file(new_name)
         newfiles_amount += 1   
 
-    if command == 'New todo list' and current_page == 1:
+    if command == 'New todo list':
         create_todolist()
+
 
     if command == 'Save file' and current_file_path:
         save_file(current_file_path, current_text_area, current_title)
 
 
-
+# save file
 def save_file(file_path, text_area, title):
-    with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-    
-    filename = os.path.basename(file_path)
-    
-    current_filename = title.get()
-    current_content = text_area.get("1.0", 'end-1c') 
+    if not file_path:
+        return
 
+    current_filename = title.get().strip()
+    current_content = text_area.get("1.0", 'end-1c')
 
-    if current_content == content and current_filename == filename:
-        print("No changes detected...")
-    elif current_filename != filename:
+    filename = os.path.basename(file_path).replace(".md", "")
+
+    if current_filename != filename:
         new_path = os.path.join(SAVE_PATH, current_filename + ".md")
         os.rename(file_path, new_path)
         file_path = new_path
+        print(f"Renamed to: {new_path}")
 
-    else:
-        with open(file_path, 'w', encoding="utf-8") as file:
-            file.write(current_content)
-        print(f"Auto-saved: {file_path}")
+    with open(file_path, 'w', encoding="utf-8") as file:
+        file.write(current_content)
+
+    print(f"Auto-saved: {file_path}")
+
     root.after(5000, save_file, file_path, text_area, title)
+
 
 # opening file and showin gin main
 
@@ -120,7 +124,7 @@ def open_file(name):
         child.destroy()
 
     title = ctk.CTkEntry(main_content, font=("Segoe UI", 28, "bold"), width = 600, fg_color='transparent', border_width=0)
-    title.insert("0", name)
+    title.insert("0", name.replace(".md", ""))
 
     title.pack(pady=(50, 0), padx=(100,0), anchor="w")
 
@@ -150,6 +154,7 @@ def delete_file(name):
 def create_todolist():
     if current_text_area:
         current_text_area.insert("insert", "- [ ] New Task\n")
+
 
 # explorer container inside 
 
@@ -196,13 +201,13 @@ def refresh_files():
                                 command = lambda n=name:open_file(n))
         file_line.pack(side = 'left', pady = 5, padx = 10)
 
-        delete_button = ctk.CTkButton(file_placer, text = "🗑️",
-                                     hover_color = "#333333",
-                                      fg_color = 'gray',
-                                      width = 0,
+        delete_button = ctk.CTkButton(file_placer, text = "x",
+                                     hover_color = "#353535",
+                                      fg_color = '#424242',
+                                      width = 30,
                                       cursor = 'hand2',
                                       command = lambda n = name: delete_file(n))
-        delete_button.pack(side=  'left', padx = (0, 30))
+        delete_button.pack(side=  'left', padx = (0, 20))
 refresh_files()
 
 
