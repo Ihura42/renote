@@ -1,5 +1,7 @@
 import customtkinter as ctk
 from pathlib import Path
+from tkcalendar import Calendar
+from datetime import datetime
 import os
 
 ctk.set_appearance_mode("dark")
@@ -43,32 +45,110 @@ current_text_area = None
 current_title = None
 current_page = 0
 
+calendar_dates = {}
 
-#showing main paig content
+
+#showing main page content
 
 def show_page(page_name):
-    global current_page
+    global current_page, current_text_area, current_title, current_file_path
     current_page = page_name
 
     for child in main_content.winfo_children():
         child.destroy()
 
+    # reset current file references
+    current_file_path = None
+    current_text_area = None
+    current_title = None
+
     if page_name == 'Home':
-        title = ctk.CTkEntry(main_content, font=("Segoe UI", 28, "bold"), width = 600, fg_color='transparent', border_width=0)
+        title = ctk.CTkEntry(main_content, font=("Segoe UI", 28, "bold"), width=600, fg_color='transparent', border_width=0)
         title.insert("0", "Untitled")
-        title.pack(pady=(50, 0), padx=(100,0), anchor="w")
+        title.pack(pady=(50, 0), padx=(100, 0), anchor="w")
 
         text_area = ctk.CTkTextbox(main_content, font=("Segoe UI", 16))
         text_area.insert("0.0", "New text...")
-        text_area.pack(fill='both', expand=True, padx=100, side = 'top')
-    elif page_name == 'Tags':
-        tags_title = ctk.CTkTextbox(main_content, font=("Segoe UI", 28, "bold"), width = 600, fg_color='transparent', border_width=0)
-        tags_title.insert("0", "Tags")
-        tags_title.pack(pady=(50, 0), padx=(100,0), anchor="w")
+        text_area.pack(fill='both', expand=True, padx=100, side='top')
 
-        text_area = ctk.CTkTextbox(main_content, font=("Segoe UI", 16))
-        text_area.insert("0.0", "There will be tags")
-        text_area.pack(fill='both', expand=True, padx=100, side = 'top')
+        current_title = title
+        current_text_area = text_area
+
+    elif page_name == 'Notes':
+        notes_title = ctk.CTkEntry(main_content, font=("Segoe UI", 28, "bold"), width=600, fg_color='transparent', border_width=0)
+        notes_title.insert("0", "Notes")
+        notes_title.pack(pady=(50, 0), padx=(100, 0), anchor="w")
+
+
+
+
+    elif page_name == 'Calendar':
+        calendar_title = ctk.CTkEntry(main_content, font=("Segoe UI", 28, "bold"), width=600, fg_color='transparent', border_width=0)
+        calendar_title.insert("0", "Calendar")
+        calendar_title.pack(pady=(50, 0), padx=(100, 0), anchor="w")
+
+        current_year = datetime.now().year
+        current_month = datetime.now().month
+        current_day = datetime.now().day
+
+        # Dark-themed calendar styling - claude
+        calendar = Calendar(
+            main_content,
+            font=("Segoe UI", 11),
+            selectmode='day',
+            year=current_year,
+            month=current_month,
+            day=current_day,
+            background="#2a2a2a",
+            foreground="#ffffff",
+            bordercolor="#3a3a3a",
+            headersbackground="#1e1e1e",
+            headersforeground="#cccccc",
+            selectbackground="#4a9eff",
+            selectforeground="#ffffff",
+            normalbackground="#2a2a2a",
+            normalforeground="#dddddd",
+            weekendbackground="#252525",
+            weekendforeground="#aaaaaa",
+            othermonthbackground="#222222",
+            othermonthforeground="#666666",
+            othermonthwebackground="#222222",
+            othermonthweforeground="#555555",
+            tooltipbackground="#333333",
+            tooltipforeground="#ffffff",
+        )
+        calendar.pack(pady=30, side='top')
+
+        calendar_entry = ctk.CTkEntry(
+            main_content,
+            font=("Segoe UI", 16),
+            width=300,
+            fg_color="#2a2a2a",
+            border_width=1,
+            border_color="#3a3a3a",
+            placeholder_text="Write a note for this date..."
+        )
+        calendar_entry.pack(pady=10)
+
+        date_label = ctk.CTkLabel(main_content, text="No date selected", font=("Segoe UI", 13), text_color="#aaaaaa")
+        date_label.pack(pady=5)
+
+        def grad_date():
+            selected = calendar.get_date()
+            note_text = calendar_entry.get().strip()
+            calendar_dates[selected] = note_text if note_text else ""
+            date_label.configure(text=f"Selected day: {selected}" + (f"  —  {note_text}" if note_text else ""))
+
+        get_date_btn = ctk.CTkButton(
+            main_content,
+            text="Get date",
+            command=grad_date,
+            width=120,
+            fg_color="#333333",
+            hover_color="#444444"
+        )
+        get_date_btn.pack(pady=10)
+
     else:
         lbl = ctk.CTkLabel(main_content, text=page_name, font=("Segoe UI", 32))
         lbl.pack(expand=True)
@@ -82,11 +162,15 @@ def execute_command(command):
             f.write("")
         refresh_files()
         open_file(new_name)
-        newfiles_amount += 1   
+        newfiles_amount += 1
 
     if command == 'New todo list':
         create_todolist()
 
+    if command == 'Delete file':
+        if current_file_path:
+            name = os.path.basename(current_file_path)
+            delete_file(name)
 
     if command == 'Save file' and current_file_path:
         save_file(current_file_path, current_text_area, current_title)
@@ -97,8 +181,12 @@ def save_file(file_path, text_area, title):
     if not file_path:
         return
 
-    current_filename = title.get().strip()
-    current_content = text_area.get("1.0", 'end-1c')
+    # check widgets still exist
+    try:
+        current_filename = title.get().strip()
+        current_content = text_area.get("1.0", 'end-1c')
+    except Exception:
+        return
 
     filename = os.path.basename(file_path).replace(".md", "")
 
@@ -108,36 +196,40 @@ def save_file(file_path, text_area, title):
         file_path = new_path
         print(f"Renamed to: {new_path}")
 
+        # update the global link
+        global current_file_path
+        current_file_path = file_path
+        refresh_files()
+
     with open(file_path, 'w', encoding="utf-8") as file:
         file.write(current_content)
 
     print(f"Auto-saved: {file_path}")
 
+    # timer for autosave with file_path
     root.after(5000, save_file, file_path, text_area, title)
 
 
-# opening file and showin gin main
+# opening file and showing in main
 
 def open_file(name):
     global current_file_path, current_text_area, current_title
     for child in main_content.winfo_children():
         child.destroy()
 
-    title = ctk.CTkEntry(main_content, font=("Segoe UI", 28, "bold"), width = 600, fg_color='transparent', border_width=0)
+    title = ctk.CTkEntry(main_content, font=("Segoe UI", 28, "bold"), width=600, fg_color='transparent', border_width=0)
     title.insert("0", name.replace(".md", ""))
 
-    title.pack(pady=(50, 0), padx=(100,0), anchor="w")
-
+    title.pack(pady=(50, 0), padx=(100, 0), anchor="w")
 
     file_path = os.path.join(SAVE_PATH, name)
 
     with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
+        content = f.read()
 
     text_area = ctk.CTkTextbox(main_content, font=("Segoe UI", 16))
     text_area.insert("0.0", content)
-    text_area.pack(fill='both', expand=True, padx=100, side = 'top')
-
+    text_area.pack(fill='both', expand=True, padx=100, side='top')
 
     current_file_path = file_path
     current_text_area = text_area
@@ -146,34 +238,43 @@ def open_file(name):
     root.after(5000, save_file, file_path, text_area, title)
 
 # delete files
-    
+
 def delete_file(name):
+    global current_file_path, current_text_area, current_title
     os.remove(SAVE_PATH + '/' + name)
+    # clear editor if the deleted file was open
+    if current_file_path and os.path.basename(current_file_path) == name:
+        current_file_path = None
+        current_text_area = None
+        current_title = None
+        for child in main_content.winfo_children():
+            child.destroy()
     refresh_files()
 
 def create_todolist():
     if current_text_area:
-        current_text_area.insert("insert", "- [ ] New Task\n")
+        current_text_area.insert("end", "- [ ] New Task\n")
 
 
-# explorer container inside 
+# explorer container inside
 
 explorer_header = ctk.CTkFrame(file_explorer, fg_color="transparent")
 explorer_header.pack(fill="x", side="top", padx=5, pady=5)
 
-exporer_file_list = ctk.CTkFrame(file_explorer, fg_color=FILES_BG)
-exporer_file_list.pack(fill = 'both', expand = True)
+explorer_file_list = ctk.CTkFrame(file_explorer, fg_color=FILES_BG)
+explorer_file_list.pack(fill='both', expand=True)
 
 #lists of buttons(icons)
 
 buttons = [
-    ("⌂", "Home"), ("📄", "Notes"), ("⛓", "Tags"),
+    ("⌂", "Home"), ("📄", "Notes"), ("📅", "Calendar"),
 ]
 
 explorer_icons = [("📄+", "New note"),
-                   ("📁+", "New folder")]
+                  ("📁+", "New folder")]
 
-address_bar_btns = [('💾', "Save file"),
+address_bar_btns = [('X', 'Delete file'),
+                    ('💾', "Save file"),
                     ("☑", 'New todo list')]
 
 #importing files from folder
@@ -181,48 +282,48 @@ address_bar_btns = [('💾', "Save file"),
 files = []
 def refresh_files():
     files.clear()
-    
+
     for filename in os.listdir(SAVE_PATH):
         if filename.endswith(".md"):
             files.append(filename)
 
-    for child in exporer_file_list.winfo_children():
-            child.destroy()
+    for child in explorer_file_list.winfo_children():
+        child.destroy()
 
     for name in files:
 
-        file_placer = ctk.CTkFrame(exporer_file_list, fg_color=FILES_BG)
-        file_placer.pack(fill = 'y')
-        file_line = ctk.CTkButton(file_placer, text = f"{ name }",
-                                anchor= 'w',hover_color="#333333",
-                                height=30 ,
-                                fg_color = FILES_BG,
-                                cursor = 'hand2',
-                                command = lambda n=name:open_file(n))
-        file_line.pack(side = 'left', pady = 5, padx = 10)
+        file_placer = ctk.CTkFrame(explorer_file_list, fg_color=FILES_BG)
+        file_placer.pack(fill='y')
+        file_line = ctk.CTkButton(file_placer, text=f"{ name }",
+                                  anchor='w', hover_color="#333333",
+                                  height=30,
+                                  fg_color=FILES_BG,
+                                  cursor='hand2',
+                                  command=lambda n=name: open_file(n))
+        file_line.pack(side='left', pady=5, padx=10)
 
-        delete_button = ctk.CTkButton(file_placer, text = "x",
-                                     hover_color = "#353535",
-                                      fg_color = '#424242',
-                                      width = 30,
-                                      cursor = 'hand2',
-                                      command = lambda n = name: delete_file(n))
-        delete_button.pack(side=  'left', padx = (0, 20))
+        delete_button = ctk.CTkButton(file_placer, text="x",
+                                      hover_color="#353535",
+                                      fg_color='#424242',
+                                      width=30,
+                                      cursor='hand2',
+                                      command=lambda n=name: delete_file(n))
+        delete_button.pack(side='left', padx=(0, 20))
 refresh_files()
 
 
-#adding icons(buttons) to sidebar
+#adding icons to sidebar
 
 for icon, name in buttons:
     btn = ctk.CTkButton(
-        sidebar, 
-        text=icon, 
-        width=40, 
+        sidebar,
+        text=icon,
+        width=40,
         height=40,
-        fg_color="transparent", 
+        fg_color="transparent",
         hover_color="#333333",
         font=("Segoe UI Symbol", 18),
-        command=lambda n=name: show_page(n) 
+        command=lambda n=name: show_page(n)
     )
     btn.pack(pady=5, padx=5)
 
@@ -230,9 +331,9 @@ for icon, name in buttons:
 
 for icon, name in explorer_icons:
     small_btn = ctk.CTkButton(
-        explorer_header, 
-        text=icon, 
-        width=30, 
+        explorer_header,
+        text=icon,
+        width=30,
         fg_color="#333333",
         command=lambda n=name: execute_command(n)
     )
@@ -242,15 +343,15 @@ for icon, name in explorer_icons:
 
 for icon, name in address_bar_btns:
     btn = ctk.CTkButton(
-        address_bar, 
-        text=icon, 
-        width=30, 
-        fg_color="transparent", 
+        address_bar,
+        text=icon,
+        width=30,
+        fg_color="transparent",
         hover_color="#333333",
         font=("Segoe UI Symbol", 18),
-        command=lambda n=name: execute_command(n) 
+        command=lambda n=name: execute_command(n)
     )
-    btn.pack(side = 'right', pady=5, padx=5)
+    btn.pack(side='right', pady=5, padx=5)
 
 
 show_page("Home")
