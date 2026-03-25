@@ -9,6 +9,9 @@ root = ctk.CTk()
 root.title('Renote')
 root.geometry("1100x700")
 
+root.bind("<Control-n>", lambda e: execute_command('New note'))
+root.bind("<Control-s>", lambda e: execute_command('Save file'))
+
 BG = "#1e1e1e"
 SIDEBAR_BG = "#202020"
 EXPLORER_BG = "#2a2a2a"
@@ -79,9 +82,20 @@ def show_page(page_name):
         notes_title.insert("0", "Notes")
         notes_title.pack(pady=(50, 0), padx=(100, 0), anchor="w")
 
+        notes_list_frame = ctk.CTkFrame(main_content, fg_color='#2a2a2a', corner_radius = 8)
+        notes_list_frame.pack(pady = 20, padx = 100, anchor = 'w', fill = 'x')
 
+        note_files = [f for f in os.listdir(SAVE_PATH) if f.endswith(".md")]
 
+        if not note_files:
+            ctk.CTkLabel(notes_list_frame, text = 'no notes yet', font = ('Segoe UI', 14), text_color= "#666666").pack(pady = 20, padx = 20)
+        else:
+            for name in note_files:
+                row = ctk.CTkFrame(notes_list_frame, fg_color="transparent")
+                row.pack(fill = 'x', padx = 10, pady = 4)
 
+                ctk.CTkButton(row, text= name.replace(".md", ""), anchor = 'w', fg_color=  'transparent', hover_color = '#333333', font = ("Segoe UI", 15), cursor = "hand2", command = lambda n = name: open_file(n)).pack(side = 'left', fill ='x', expand = True)
+                ctk.CTkButton(row, text = 'x', width = 30, fg_color="#424242", hover_color="#353535", cursor = 'hand2', command = lambda n= name: [delete_file(n), show_page("Notes")]).pack(side = 'right')
     elif page_name == 'Calendar':
         calendar_title = ctk.CTkEntry(main_content, font=("Segoe UI", 28, "bold"), width=600, fg_color='transparent', border_width=0)
         calendar_title.insert("0", "Calendar")
@@ -94,44 +108,29 @@ def show_page(page_name):
         # Dark-themed calendar styling - claude
         calendar = Calendar(
             main_content,
-            font=("Segoe UI", 11),
+            font=("Segoe UI", 16),
             selectmode='day',
             year=current_year,
             month=current_month,
             day=current_day,
             background="#2a2a2a",
-            foreground="#ffffff",
-            bordercolor="#3a3a3a",
-            headersbackground="#1e1e1e",
-            headersforeground="#cccccc",
-            selectbackground="#4a9eff",
-            selectforeground="#ffffff",
-            normalbackground="#2a2a2a",
-            normalforeground="#dddddd",
-            weekendbackground="#252525",
-            weekendforeground="#aaaaaa",
-            othermonthbackground="#222222",
-            othermonthforeground="#666666",
-            othermonthwebackground="#222222",
-            othermonthweforeground="#555555",
-            tooltipbackground="#333333",
-            tooltipforeground="#ffffff",
+            foreground="#ffffff"
         )
-        calendar.pack(pady=30, side='top')
+        calendar.pack(pady=30, anchor = 'w', padx = 100)
 
         calendar_entry = ctk.CTkEntry(
             main_content,
-            font=("Segoe UI", 16),
+            font=("Segoe UI", 18),
             width=300,
             fg_color="#2a2a2a",
             border_width=1,
             border_color="#3a3a3a",
             placeholder_text="Write a note for this date..."
         )
-        calendar_entry.pack(pady=10)
+        calendar_entry.pack(pady=5, anchor = 'w', padx = 135)
 
         date_label = ctk.CTkLabel(main_content, text="No date selected", font=("Segoe UI", 13), text_color="#aaaaaa")
-        date_label.pack(pady=5)
+        date_label.pack(pady=2,anchor = 'w', padx = 220)
 
         def grad_date():
             selected = calendar.get_date()
@@ -143,11 +142,11 @@ def show_page(page_name):
             main_content,
             text="Get date",
             command=grad_date,
-            width=120,
+            width=150,
             fg_color="#333333",
             hover_color="#444444"
         )
-        get_date_btn.pack(pady=10)
+        get_date_btn.pack(pady=5, anchor = 'w', padx = 205)
 
     else:
         lbl = ctk.CTkLabel(main_content, text=page_name, font=("Segoe UI", 32))
@@ -276,6 +275,8 @@ explorer_icons = [("📄+", "New note"),
 address_bar_btns = [('X', 'Delete file'),
                     ('💾', "Save file"),
                     ("☑", 'New todo list')]
+
+
 
 #importing files from folder
 
