@@ -3,6 +3,7 @@ from pathlib import Path
 from tkcalendar import Calendar
 from datetime import datetime
 import os
+import json
 
 ctk.set_appearance_mode("dark")
 root = ctk.CTk()
@@ -105,7 +106,6 @@ def show_page(page_name):
         current_month = datetime.now().month
         current_day = datetime.now().day
 
-        # Dark-themed calendar styling - claude
         calendar = Calendar(
             main_content,
             font=("Segoe UI", 16),
@@ -128,25 +128,71 @@ def show_page(page_name):
             placeholder_text="Write a note for this date..."
         )
         calendar_entry.pack(pady=5, anchor = 'w', padx = 135)
+        def data_export():
+            try:
+                with open("data.json", mode='r', encoding='utf-8') as feedsjson:
+                    feeds = json.load(feedsjson)
+            except FileNotFoundError:
+                feeds = []
+
+            entry = {calendar.get_date():calendar_entry.get()}
+
+            with open("data.json", 'w') as f:
+                json.dump(entry, f, indent=4)
+
+            feeds.append(entry)
+
+            with open("data.json", mode='w', encoding='utf-8') as feedsjson:
+                json.dump(feeds, feedsjson, indent=4)
+
+            grad_date()
+        
 
         date_label = ctk.CTkLabel(main_content, text="No date selected", font=("Segoe UI", 13), text_color="#aaaaaa")
         date_label.pack(pady=2,anchor = 'w', padx = 220)
 
         def grad_date():
             selected = calendar.get_date()
-            note_text = calendar_entry.get().strip()
-            calendar_dates[selected] = note_text if note_text else ""
-            date_label.configure(text=f"Selected day: {selected}" + (f"  —  {note_text}" if note_text else ""))
+
+            if not os.path.exists("data.json"):
+                date_label.configure(text=f"Selected day: {selected} — no notes yet")
+                return
+
+            with open('data.json', 'r') as file:
+                data = json.load(file) 
+
+            # search through each dict in the list for the selected date - claude
+            note_text = next((item[selected] for item in data if selected in item), "")
+
+            calendar_dates[selected] = note_text
+            date_label.configure(
+                text=f"Selected day: {selected}" + (f"  —  {note_text}" if note_text else "")
+            )
+
+        btn_frame = ctk.CTkFrame(main_content, fg_color= BG)
+        btn_frame.pack(fill="x", pady=5)
 
         get_date_btn = ctk.CTkButton(
-            main_content,
-            text="Get date",
-            command=grad_date,
+            btn_frame,
+            text="Write note",
+            command=data_export,
             width=150,
             fg_color="#333333",
             hover_color="#444444"
         )
-        get_date_btn.pack(pady=5, anchor = 'w', padx = 205)
+        
+        show_data_btn = ctk.CTkButton(
+            btn_frame,
+            text = 'Show note',
+            command = grad_date,
+            width = 150,
+            fg_color = '#333333',
+            hover_color = '#444444'
+        )
+
+        show_data_btn.pack(side="left", padx=95)
+
+        get_date_btn.pack(side="left", padx=0)
 
     else:
         lbl = ctk.CTkLabel(main_content, text=page_name, font=("Segoe UI", 32))
@@ -252,7 +298,9 @@ def delete_file(name):
 
 def create_todolist():
     if current_text_area:
-        current_text_area.insert("end", "- [ ] New Task\n")
+        current_text_area.insert("end", "- ☐ New Task\n")
+
+        
 
 
 # explorer container inside
